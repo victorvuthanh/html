@@ -1,0 +1,76 @@
+Повторить все действия по доработке БД vk из урока.
+
+__________________________________
+Используя сервисa http://filldb.info , https://www.mockaroo.com/ или другой по вашему желанию, сгенерировать тестовые данные для всех таблиц, используя vk-data.sql, учитывая логику связей. Для всех таблиц, где это имеет смысл, создать не менее 100 строк. Для media_types создать ровно 4 строки. Загрузить тестовые данные. Приложить к отчёту полученный дамп с данными.
+
+
+__________________________________
+Написать запрос для переименования названий типов медиа (колонка name в media_types), которые вы получили в пункте 3 в image, audio, video, document. Написать запрос, удаляющий заявки в друзья самому себе.
+
+
+mysql> SELECT * FROM media_types;
++----+--------------+
+| id | name         |
++----+--------------+
+|  9 | ad           |
+|  8 | consequuntur |
+|  3 | et           |
+|  4 | iste         |
+|  1 | non          |
+|  7 | optio        |
+|  2 | provident    |
+| 10 | qui          |
+|  6 | recusandae   |
+|  5 | veniam       |
++----+--------------+
+10 rows in set (0.00 sec)
+
+mysql> update media_types
+    -> set name = 'image'
+    -> where id = 1;
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+mysql> update media_types
+    -> set name = 'video'
+    -> where id = 2;
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+mysql> update media_types
+    -> set name = 'audio'
+    -> where id = 3;
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+mysql> update media_types
+    -> set name = 'documents'
+    -> where id = 4;
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+mysql> SELECT * FROM media_types;
++----+--------------+
+| id | name         |
++----+--------------+
+|  9 | ad           |
+|  3 | audio        |
+|  8 | consequuntur |
+|  4 | documents    |
+|  1 | image        |
+|  7 | optio        |
+| 10 | qui          |
+|  6 | recusandae   |
+|  5 | veniam       |
+|  2 | video        |
++----+--------------+
+10 rows in set (0.00 sec)
+
+mysql> 
+mysql> update friend_requests
+    -> set accepted = 0
+    -> where from_user_id = to_user_id;
+Query OK, 0 rows affected (0.00 sec)
+Rows matched: 1  Changed: 0  Warnings: 0
+
+
+__________________________________
+Написать название темы курсового проекта
+
+Закупка пиломатериала
