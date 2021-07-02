@@ -1308,6 +1308,7 @@ VALUES
 	('99', 'Stokes, Hoppe and Pagac', ''),
 	('100', 'Labadie-Cremin', 'Weissnat LLC');
 
+
 INSERT INTO title_info(title_id, title_type_id, poster, tagline, synopsis, release_date, rars)
 VALUES
 	('1', '4', '121', 'Expanded secondary product',
