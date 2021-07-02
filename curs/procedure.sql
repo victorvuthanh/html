@@ -95,3 +95,138 @@ CALL titles_for_kids(10);
 +--------------------------------+--------------+------+
 10 rows in set (0.01 sec)
 */
+
+-- ---------------------------------------------------------
+-- ------------ Similar titles on a title page -------------
+-- ------------ for any user ------------------------------
+
+
+DROP PROCEDURE IF EXISTS similar_titles;
+DELIMITER //
+CREATE PROCEDURE similar_titles(IN for_title_id INT)
+BEGIN
+
+	-- Titles of the same genre
+	SELECT t.title, rtg.avg_r
+	  FROM titles t
+			   JOIN votes_on_genre vog ON t.id = vog.title_id
+			   JOIN (SELECT round(avg(rating)) AS avg_r,
+							title_id
+					   FROM rating
+					  GROUP BY title_id
+					) rtg ON rtg.title_id = t.id
+	 WHERE t.id <> for_title_id
+	   AND vog.genre_id IN (SELECT genre_id
+							  FROM votes_on_genre
+							 WHERE title_id = for_title_id
+						   )
+	   AND g_relevancy(vog.title_id, vog.genre_id) > 0
+
+	 UNION
+
+-- Titles with the same keywords
+	SELECT t.title, rtg.avg_r
+	  FROM titles t
+			   JOIN votes_on_keywords vok ON t.id = vok.title_id
+			   JOIN (SELECT round(avg(rating)) AS avg_r,
+							title_id
+					   FROM rating
+					  GROUP BY title_id
+					) rtg ON rtg.title_id = t.id
+	 WHERE t.id <> for_title_id
+	   AND keyword_id IN (SELECT keyword_id
+							FROM votes_on_keywords
+						   WHERE title_id = for_title_id
+						 )
+	   AND k_relevancy(vok.title_id, vok.keyword_id) > 0
+
+	 UNION
+
+-- Titles of the same type produced in the same country
+	SELECT t.title, rtg.avg_r
+	  FROM titles t
+			   JOIN title_info ti ON ti.title_id = t.id
+			   JOIN title_country tc ON tc.title_id = t.id
+			   JOIN (SELECT round(avg(rating)) AS avg_r,
+							title_id
+					   FROM rating
+					  GROUP BY title_id
+					) rtg ON rtg.title_id = t.id
+	 WHERE t.id <> for_title_id
+	   AND ti.title_type_id IN (SELECT title_type_id
+								  FROM title_info
+								 WHERE title_id = for_title_id
+							   )
+	   AND tc.country_id IN (SELECT country_id
+							   FROM title_country
+							  WHERE title_id = for_title_id
+							)
+
+	 UNION
+
+-- Titles of the same type directed by the same person
+	SELECT t.title, rtg.avg_r
+	  FROM titles t
+			   JOIN title_info ti ON ti.title_id = t.id
+			   JOIN cast_and_crew cac ON cac.title_id = t.id
+			   JOIN (SELECT round(avg(rating)) AS avg_r,
+							title_id
+					   FROM rating
+					  GROUP BY title_id
+					) rtg ON rtg.title_id = t.id
+	 WHERE t.id <> for_title_id
+	   AND ti.title_type_id IN (SELECT title_type_id
+								  FROM title_info
+								 WHERE title_id = for_title_id
+							   )
+	   AND cac.role_id = 3
+	   AND cac.creator_id IN (SELECT creator_id
+								FROM cast_and_crew
+							   WHERE title_id = for_title_id
+							 )
+
+	 UNION
+
+-- Titles of the same type produced by the same companies
+	SELECT t.title, rtg.avg_r
+	  FROM titles t
+			   JOIN title_info ti ON ti.title_id = t.id
+			   JOIN title_company tc ON t.id = tc.title_id
+			   JOIN (SELECT round(avg(rating)) AS avg_r,
+							title_id
+					   FROM rating
+					  GROUP BY title_id
+					) rtg ON rtg.title_id = t.id
+	 WHERE t.id <> for_title_id
+	   AND ti.title_type_id IN (SELECT title_type_id
+								  FROM title_info
+								 WHERE title_id = for_title_id
+							   )
+	   AND tc.company_id IN (SELECT company_id
+							   FROM title_company
+							  WHERE title_id = for_title_id
+							)
+
+	 ORDER BY
+		 rand()
+	 LIMIT 5;
+
+END //
+DELIMITER ;
+
+
+CALL similar_titles(5);
+
+/*
++-------------------+-------+
+| title             | avg_r |
++-------------------+-------+
+| Armstrong-Pollich |     5 |
+| O'Hara-Ziemann    |     6 |
+| Stokes-Beier      |     5 |
+| Beer-Cruickshank  |     7 |
+| Lakin-Lang        |     9 |
++-------------------+-------+
+5 rows in set (0.05 sec)
+
+*/
