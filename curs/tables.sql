@@ -239,6 +239,7 @@ CREATE TABLE votes_on_keywords (
 		ON UPDATE CASCADE
 );
 
+
 DROP TABLE IF EXISTS votes_on_genre;
 CREATE TABLE votes_on_genre (
 	id SERIAL PRIMARY KEY,
