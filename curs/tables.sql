@@ -1,11 +1,11 @@
-DROP DATABASE IF EXISTS video;
-CREATE DATABASE video;
-USE video;
+DROP DATABASE IF EXISTS videohub;
+CREATE DATABASE videohub;
+USE videohub;
 
--- базовые данные
+-- базовый таблицы
 
-DROP TABLE IF EXISTS companies;
-CREATE TABLE companies (
+DROP TABLE IF EXISTS studios;
+CREATE TABLE studios (
 	id SERIAL PRIMARY KEY,
 	company VARCHAR(200) UNIQUE NOT NULL
 );
@@ -100,10 +100,10 @@ CREATE TABLE messages (
 		ON UPDATE CASCADE
 );
 
--- фильмы
+-- фильмотека
 
-DROP TABLE IF EXISTS films;
-CREATE TABLE films (
+DROP TABLE IF EXISTS titles;
+CREATE TABLE titles (
 	id SERIAL PRIMARY KEY,
 	title VARCHAR(100) NOT NULL,
 	original_title VARCHAR(100) DEFAULT ' ',
@@ -112,8 +112,8 @@ CREATE TABLE films (
 	INDEX (original_title)
 );
 
-DROP TABLE IF EXISTS film_info; 
-CREATE TABLE film_info (
+DROP TABLE IF EXISTS title_info;
+CREATE TABLE title_info (
 	id SERIAL PRIMARY KEY,
 	title_id BIGINT UNSIGNED,
 	title_type_id BIGINT UNSIGNED DEFAULT 1,
@@ -125,7 +125,7 @@ CREATE TABLE film_info (
 
 	INDEX (release_date),
 
-	FOREIGN KEY (title_id) REFERENCES films (id)
+	FOREIGN KEY (title_id) REFERENCES titles (id)
 		ON DELETE RESTRICT
 		ON UPDATE CASCADE,
 	FOREIGN KEY (title_type_id) REFERENCES title_types (id)
@@ -136,15 +136,15 @@ CREATE TABLE film_info (
 		ON UPDATE CASCADE
 );
 
--- данные о фильмах
+-- доп инфо
 
-DROP TABLE IF EXISTS film_country;
-CREATE TABLE film_country (
+DROP TABLE IF EXISTS title_country;
+CREATE TABLE title_country (
 	id SERIAL PRIMARY KEY,
 	title_id BIGINT UNSIGNED,
 	country_id BIGINT UNSIGNED,
 
-	FOREIGN KEY (title_id) REFERENCES films (id)
+	FOREIGN KEY (title_id) REFERENCES titles (id)
 		ON DELETE RESTRICT
 		ON UPDATE CASCADE,
 	FOREIGN KEY (country_id) REFERENCES countries (id)
@@ -152,16 +152,16 @@ CREATE TABLE film_country (
 		ON UPDATE CASCADE
 );
 
-DROP TABLE IF EXISTS film_company;
-CREATE TABLE film_company (
+DROP TABLE IF EXISTS title_company;
+CREATE TABLE title_company (
 	id SERIAL PRIMARY KEY,
 	title_id BIGINT UNSIGNED,
 	company_id BIGINT UNSIGNED,
 
-	FOREIGN KEY (title_id) REFERENCES films (id)
+	FOREIGN KEY (title_id) REFERENCES titles (id)
 		ON DELETE RESTRICT
 		ON UPDATE CASCADE,
-	FOREIGN KEY (company_id) REFERENCES companies (id)
+	FOREIGN KEY (company_id) REFERENCES studios (id)
 		ON DELETE SET NULL
 		ON UPDATE CASCADE
 );
@@ -194,7 +194,7 @@ CREATE TABLE cast_and_crew (
 	role_id BIGINT UNSIGNED,
 	creator_id BIGINT UNSIGNED,
 
-	FOREIGN KEY (title_id) REFERENCES films (id)
+	FOREIGN KEY (title_id) REFERENCES titles (id)
 		ON DELETE RESTRICT
 		ON UPDATE CASCADE,
 	FOREIGN KEY (role_id) REFERENCES roles (id)
@@ -205,7 +205,7 @@ CREATE TABLE cast_and_crew (
 		ON UPDATE CASCADE
 );
 
--- рейтинги
+-- по голосам пользователей
 
 DROP TABLE IF EXISTS all_keywords;
 CREATE TABLE all_keywords (
@@ -228,7 +228,7 @@ CREATE TABLE votes_on_keywords (
 	vote BIT DEFAULT 1,
 	created_at TIMESTAMP DEFAULT now(),
 
-	FOREIGN KEY (title_id) REFERENCES films (id)
+	FOREIGN KEY (title_id) REFERENCES titles (id)
 		ON DELETE RESTRICT
 		ON UPDATE CASCADE,
 	FOREIGN KEY (keyword_id) REFERENCES all_keywords (id)
@@ -250,7 +250,7 @@ CREATE TABLE votes_on_genre (
 
 
 
-	FOREIGN KEY (title_id) REFERENCES films (id)
+	FOREIGN KEY (title_id) REFERENCES titles (id)
 		ON DELETE RESTRICT
 		ON UPDATE CASCADE,
 	FOREIGN KEY (genre_id) REFERENCES genres (id)
@@ -272,7 +272,7 @@ CREATE TABLE rating (
 
 	INDEX (rating),
 
-	FOREIGN KEY (title_id) REFERENCES films (id)
+	FOREIGN KEY (title_id) REFERENCES titles (id)
 		ON DELETE RESTRICT
 		ON UPDATE CASCADE,
 	FOREIGN KEY (user_id) REFERENCES users (id)
@@ -291,7 +291,7 @@ CREATE TABLE reviews (
 
 	INDEX (is_positive),
 
-	FOREIGN KEY (title_id) REFERENCES films (id)
+	FOREIGN KEY (title_id) REFERENCES titles (id)
 		ON DELETE RESTRICT
 		ON UPDATE CASCADE,
 	FOREIGN KEY (user_id) REFERENCES users (id)
@@ -326,7 +326,7 @@ CREATE TABLE watchlist (
 	created_at TIMESTAMP DEFAULT now(),
 	updated_at TIMESTAMP DEFAULT now(),
 
-	FOREIGN KEY (title_id) REFERENCES films (id)
+	FOREIGN KEY (title_id) REFERENCES titles (id)
 		ON DELETE RESTRICT
 		ON UPDATE CASCADE,
 	FOREIGN KEY (user_id) REFERENCES users (id)
@@ -361,12 +361,12 @@ CREATE TABLE user_list_items (
 	FOREIGN KEY (list_id) REFERENCES user_lists (id)
 		ON DELETE CASCADE
 		ON UPDATE CASCADE,
-	FOREIGN KEY (title_id) REFERENCES films (id)
+	FOREIGN KEY (title_id) REFERENCES titles (id)
 		ON DELETE RESTRICT
 		ON UPDATE CASCADE
 );
 
--- последователи
+-- FOLLOWERS
 
 DROP TABLE IF EXISTS follow_user;
 CREATE TABLE follow_user (
@@ -432,75 +432,3 @@ CREATE TABLE follow_list (
 		ON UPDATE CASCADE
 );
 
-
--- Функции
-
-
--- счет голосов по жандрам
-DROP FUNCTION IF EXISTS g_relevancy;
-DELIMITER //
-CREATE FUNCTION g_relevancy(t_id INT UNSIGNED, g_id INT UNSIGNED)
-	RETURNS INT DETERMINISTIC
-BEGIN
-	RETURN (SELECT likes.c - dislikes.c
-			  FROM (
-					   SELECT count(vote) AS c
-						 FROM votes_on_genre
-						WHERE vote = 1 AND title_id = t_id AND genre_id = g_id
-				   ) AS likes
-					   JOIN (
-				  SELECT count(vote) AS c
-					FROM votes_on_genre
-				   WHERE vote = 0 AND title_id = t_id AND genre_id = g_id
-							) AS dislikes
-		   );
-END; //
-DELIMITER ;
-
-
-
--- счет голосов по ключевым словам
-DROP FUNCTION IF EXISTS k_relevancy;
-DELIMITER //
-CREATE FUNCTION k_relevancy(t_id INT UNSIGNED, k_id INT UNSIGNED)
-	RETURNS INT DETERMINISTIC
-BEGIN
-	RETURN (SELECT likes.c - dislikes.c
-			  FROM (
-					   SELECT count(vote) AS c
-						 FROM votes_on_keywords
-						WHERE vote = 1 AND title_id = t_id AND keyword_id = k_id
-				   ) AS likes
-					   JOIN (
-				  SELECT count(vote) AS c
-					FROM votes_on_keywords
-				   WHERE vote = 0 AND title_id = t_id AND keyword_id = k_id
-							) AS dislikes
-		   );
-END;
-//
-DELIMITER ;
-
-
-
--- Смотреть рейтинг
-DROP FUNCTION IF EXISTS review_rate;
-DELIMITER //
-CREATE FUNCTION review_rate(r_id INT UNSIGNED)
-	RETURNS INT DETERMINISTIC
-BEGIN
-	RETURN (SELECT likes.c - dislikes.c
-			  FROM (
-					   SELECT count(vote) AS c
-						 FROM votes_on_reviews
-						WHERE vote = 1 AND review_id = r_id
-				   ) AS likes
-					   JOIN (
-				  SELECT count(vote) AS c
-					FROM votes_on_reviews
-				   WHERE vote = 0 AND review_id = r_id
-							) AS dislikes
-		   );
-END;
-//
-DELIMITER ;
